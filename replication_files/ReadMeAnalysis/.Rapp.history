@@ -1,6 +1,0 @@
-#All together now: ReadMe#
-#Set your home directory to replication file #
-homedir <- ""#
-setwd(homedir)#
-setwd("ReadMeAnalysis/Analysis1")#
-results1 <- read.csv("ReadMeBootResults.csv")
