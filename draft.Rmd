@@ -1,0 +1,128 @@
+---
+# title: "Unsupervised Text Classification With Chinese Social Media: An Extension of King, Pan, and Roberts (2017)"
+output:
+ pdf_document:
+  md_extension: +raw_tex
+  latex_engine: xelatex
+header-includes:
+  
+# Set 12-point font.
+
+- \usepackage[fontsize = 12pt]{scrextend}
+
+# Set double spacing.
+# - \usepackage{setspace}
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(extrafont)
+library(janitor)
+library(tm)
+library(tmcn)
+library(tidytext)
+library(stringr)
+```
+
+```{r load_data, message=FALSE, warning=FALSE}
+
+# Load the known 50c posts from posts_all, which has 43,757 leaked posts from the Zhanggong Internet Propaganda Department.
+# It contains information about the posting organization, some URLs, some account names, post date, and text of the post.
+
+df <- read_csv("data/posts_all.csv") %>% 
+
+# Clean the names of the variables.
+
+  clean_names() %>% 
+  mutate(city = what_is_the_city,
+         organization = what_is_the_name_of_the_organization_making_posts,
+         account = what_is_the_account_name_of_the_person_posting,
+         date = post_date,
+         text = textseg) %>% 
+  select(city, folder, file, organization, url, content, site, account, date, category, text)
+
+# Note that 188 posts are categorized. I presume these are the coded posts that the human coders agreed upon, approximately
+# 94 percent of 200 randomly selected posts in total. [N.B., the paper says 93 percent.] It's strange that there are no examples of 1, 2, or 6 (other). How
+# does ReadMe know what these look like if there are no examples of them?
+
+# Categories 1 and 2 are "taunting of foreign countries" and "argumentative praise or criticism," respectively.
+# Categories 3, 4, and 5 are "non-argumentative praise or suggestions," "factual reporting," and "cheerleading for China," respectively.
+# Category 6 is "other." From the paper, "Irrelevant posts that are entirely personal, commercial (such as ads), jokes, or empty posts that forward information not included. This category is removed and conditioned on in all analyses in this article."
+
+#########################
+### TEXT MANIPULATION
+#########################
+
+# Use a comprehensive list of Chinese stopwords 50 percent longer than what's in the tmcn package.
+# Downloaded from https://github.com/stopwords-iso/stopwords-zh.
+
+stop_cn <- read_delim("stopwords-zh.txt", delim = "\n", col_names = FALSE) %>% 
+  mutate(words = X1) %>% 
+  select(words)
+  
+# Turn the content into a corpus with the tm package.
+
+cp <- Corpus(VectorSource(df$text)) %>% 
+  
+# Strip out all of the stopwords and punctuation.
+  
+  tm_map(removePunctuation, ucp = TRUE) %>% 
+  tm_map(removeWords, stop_cn[[1]])
+
+# Create document term matrices, one with counts and one with tf-idf.
+
+dtm <- DocumentTermMatrix(cp)
+dtm_tfidf <- DocumentTermMatrix(cp, control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
+
+
+
+
+```
+
+
+\begin{centering}
+{\Large 
+DRAFT
+
+Unsupervised Text Classification With Chinese Social Media
+
+An Extension of King, Pan, and Roberts (2017)
+
+}
+\end{centering}
+
+## Abstract
+<150 words
+
+## I. Introduction
+* Background on the 50c party. State of knowledge before KPR (2017) and since.
+* Other quantitative approaches to studying the 50c party and Chinese internet “opinion guidance.”
+* Summarize King, Pan, and Roberts (2017), specifically data source and results.
+* Try to improve figures if I can replicate the original ReadMe results (but probably don’t have the human-coded posts).
+* Describe impact/significance of the paper.
+
+## II. Extension
+
+The approach I took is detailed in Stanford (https://web.stanford.edu/~gentzkow/research/text-as-data.pdf, 5). I define $\mathscr{D}$ as the set of individual posts {$\mathscr{D}_i$} with row $c_i$ the numerical vector that represents the presence of a particular language token $i$. 
+
+* Motivation/rationale for why the reassessment is warranted.
+* Categories are informed by existing knowledge but still somewhat arbitrary…
+* Define research question.
+* How unsupervised text classification works (general approach) vis-à-vis ReadMe.
+* Why I picked certain methodologies.
+
+**IDEAS**
+* Automate + boost ReadMe (run it many times with different classifications?)
+* Test my results with the out-of-sample batch. (knownWeibos_zg)
+
+## III. Results and Discussion
+* What the findings were.
+* Implications of findings.
+* Directions for future work.
+
+## Acknowledgements
+
+## References
+
