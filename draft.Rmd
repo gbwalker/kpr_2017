@@ -13,6 +13,9 @@ header-includes:
 # Set double spacing.
 # - \usepackage{setspace}
 
+# Display Chinese characters.
+
+- \usepackage{xeCJK}
 ---
 
 ```{r setup, include=FALSE}
@@ -24,6 +27,9 @@ library(tm)
 library(tmcn)
 library(tidytext)
 library(stringr)
+library(textmineR)
+library(quanteda)
+library(topicmodels)
 ```
 
 ```{r load_data, message=FALSE, warning=FALSE}
@@ -52,7 +58,7 @@ df <- read_csv("data/posts_all.csv") %>%
 # Category 6 is "other." From the paper, "Irrelevant posts that are entirely personal, commercial (such as ads), jokes, or empty posts that forward information not included. This category is removed and conditioned on in all analyses in this article."
 
 #########################
-### TEXT MANIPULATION
+### TEXT MINING
 #########################
 
 # Use a comprehensive list of Chinese stopwords 50 percent longer than what's in the tmcn package.
@@ -71,13 +77,57 @@ cp <- Corpus(VectorSource(df$text)) %>%
   tm_map(removePunctuation, ucp = TRUE) %>% 
   tm_map(removeWords, stop_cn[[1]])
 
-# Create document term matrices, one with counts and one with tf-idf.
+# See the cleaned text with this.
+# cleaned_text <- tibble(text = get("content", cp))
+
+# Save the corpus into a quanteda corpus object in order to get bigrams.
+
+cp_bi <- corpus(cp)
+
+# Create document term matrices, one with counts, one with tf-idf, and one with bigrams.
 
 dtm <- DocumentTermMatrix(cp)
 dtm_tfidf <- DocumentTermMatrix(cp, control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
+dtm_bi <- dfm(cp_bi, ngrams = 2) %>% 
+  convert(to = "tm")
 
+# Remove sparse terms from both, which reduces the words from about 22,000 to 2,000.
+# At sparse = .999, the function removes words that appear in less than 1 in every 1,000 documents,
+# or in this case 44 documents.
+# Worth trying with less granularity at sparse = .99.
 
+dtm_clean <- removeSparseTerms(dtm, .999)
+dtm_tfidf_clean <- removeSparseTerms(dtm_tfidf, .999)
+dtm_bi_clean <- removeSparseTerms(dtm_bi, .999)
 
+# Eliminate documents without any of the common terms.
+
+rowtotals1 <- apply(dtm_clean, 1, sum)
+rowtotals2 <- apply(dtm_tfidf_clean, 1, sum)
+rowtotals3 <- apply(dtm_bi_clean, 1, sum)
+
+# The frequency dtm now has 43,572 documents.
+# The tfidf has 43,387.
+# The bigram has 37,422.
+
+dtm_clean   <- dtm_clean[rowtotals1 > 0, ]
+dtm_tfidf_clean   <- dtm_clean[rowtotals2 > 0, ]
+dtm_bi_clean   <- dtm_clean[rowtotals3 > 0, ]
+
+# Test LDA.
+
+mod_lda <- LDA(dtm_bi_clean, 5)
+
+# Get information about each post.
+# See page 10: https://cran.r-project.org/web/packages/topicmodels/vignettes/topicmodels.pdf
+
+post <- posterior(mod_lda)
+terms(mod_lda)
+topics <- topics(mod_lda)
+
+# Show the percentage breakdown of the 5 topics.
+
+count(tops, value) %>% mutate(percent = n / nrow(tops))
 
 ```
 
@@ -105,8 +155,6 @@ An Extension of King, Pan, and Roberts (2017)
 
 ## II. Extension
 
-The approach I took is detailed in Stanford (https://web.stanford.edu/~gentzkow/research/text-as-data.pdf, 5). I define $\mathscr{D}$ as the set of individual posts {$\mathscr{D}_i$} with row $c_i$ the numerical vector that represents the presence of a particular language token $i$. 
-
 * Motivation/rationale for why the reassessment is warranted.
 * Categories are informed by existing knowledge but still somewhat arbitrary…
 * Define research question.
@@ -125,4 +173,30 @@ The approach I took is detailed in Stanford (https://web.stanford.edu/~gentzkow/
 ## Acknowledgements
 
 ## References
+
+\pagebreak
+
+## Technical Appendix
+
+* Basically, explaining my code. Why I made certain decisions.
+
+The approach I took is detailed in Stanford (https://web.stanford.edu/~gentzkow/research/text-as-data.pdf, 5). In the document term matrix (DTM), I define $\mathbb{D}$ as the set of individual posts {$\mathbb{D}_i$} with row $c_i$ the numerical vector that represents the presence or weight of a particular language token $j$. I remove stop words (from a list of 750+) and punctuation.
+
+I then reduce the dimensionality of the DTM from around $i \approx 22,000$ to $i \approx 2,000$ with two methods: first by per-document word count, and second by term-frequency-inverse-document-frequency (tf-idf), which excludes both common and rare words.
+
+Term frequency is
+
+$$ tf_{i,j} = \frac{n_{i,j}}{\sum n_{i,j}}$$
+where $n_{i,j}$ is the number of occurences of token $j$ in post $i$ and $\sum_k n_{i,j}$ is the total number of occurences of the token through all of the documents.
+
+Inverse data frequency is
+
+$$ idf = \log \bigg(\frac{N}{df_i} \bigg) $$
+where $df_i$ is the number of documents containing $i$ out of all of the $N$ documents, so rare words have a high $idf$ score.
+
+Tf-idf is the product of the two terms, $tf \times idf$.
+
+I did not attempt to "stem" the words further because Chinese words do not require stemming (some possible exceptions are nouns and verbs that end in "-们" or "-了," respectively).
+
+As a first attempt, I use the "bag-of-words" approach where word order within each post does not matter. An alterntaive approach would be to use a "bigram" that counts frequencies of adjacent pairs of words.
 
