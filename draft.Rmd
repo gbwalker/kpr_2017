@@ -32,7 +32,7 @@ library(quanteda)
 library(topicmodels)
 ```
 
-```{r load_data, message=FALSE, warning=FALSE}
+```{r load_data, message=FALSE, warning=FALSE, eval = FALSE}
 
 # Load the known 50c posts from posts_all, which has 43,757 leaked posts from the Zhanggong Internet Propaganda Department.
 # It contains information about the posting organization, some URLs, some account names, post date, and text of the post.
@@ -131,7 +131,6 @@ count(tops, value) %>% mutate(percent = n / nrow(tops))
 
 ```
 
-
 \begin{centering}
 {\Large 
 DRAFT
@@ -150,25 +149,28 @@ An Extension of King, Pan, and Roberts (2017)
 * Background on the 50c party. State of knowledge before KPR (2017) and since.
 * Other quantitative approaches to studying the 50c party and Chinese internet “opinion guidance.”
 * Summarize King, Pan, and Roberts (2017), specifically data source and results.
-* Try to improve figures if I can replicate the original ReadMe results (but probably don’t have the human-coded posts).
+* Try to improve figures if I can replicate the original ReadMe results.
 * Describe impact/significance of the paper.
 
 ## II. Extension
 
-* Motivation/rationale for why the reassessment is warranted.
-* Categories are informed by existing knowledge but still somewhat arbitrary…
-* Define research question.
+* Motivation/rationale for why the reassessment is warranted: 
+  * Categories are informed by existing knowledge but still somewhat arbitrary.
+  * Try a few different unsupervised approaches as *inputs* into ReadMe and see if the results differ.
+* Define research question: Can ReadMe be fully automated? What categories do different fully unsupervised methods produce, and do they resembled the human-coded ones?
 * How unsupervised text classification works (general approach) vis-à-vis ReadMe.
-* Why I picked certain methodologies.
+* Why I picked certain methodologies (out of the 150 options presented in King and Grimmer (2011)).
 
 **IDEAS**
-* Automate + boost ReadMe (run it many times with different classifications?)
-* Test my results with the out-of-sample batch. (knownWeibos_zg)
+
+* Automate (and possibly bag?) ReadMe results with different unsupervised inputs. See if I can get more precise estimates of the topic proportions than in the paper (or different classifications?).
+* Test my results with the out-of-sample batch of 100,000+ posts. (knownWeibos_zg.csv)
 
 ## III. Results and Discussion
-* What the findings were.
+
+* What the findings were. [A quick test with LDA alone for 5 categories produced much closer proportions of categories very unlike what's reported in the paper. But these ML models are biased predictors because they aim for classification accuracy, not overall proportion accuracy.]
 * Implications of findings.
-* Directions for future work.
+* Areas for future work.
 
 ## Acknowledgements
 
@@ -198,5 +200,6 @@ Tf-idf is the product of the two terms, $tf \times idf$.
 
 I did not attempt to "stem" the words further because Chinese words do not require stemming (some possible exceptions are nouns and verbs that end in "-们" or "-了," respectively).
 
-As a first attempt, I use the "bag-of-words" approach where word order within each post does not matter. An alterntaive approach would be to use a "bigram" that counts frequencies of adjacent pairs of words.
+I use the "bag-of-words" approach where word order within each post does not matter for the selections reduced with term frequency and tf-idf. I also use a "bigram" (a $n = 2$ $n$-gram) that counts frequencies of adjacent pairs of words.
 
+Next steps: Try out ReadMe (or ReadMe2) and other unsupervised methods from King and Grimmer (2011).
