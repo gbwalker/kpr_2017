@@ -25,7 +25,11 @@ library(extrafont)
 library(janitor)
 library(tidytext)
 library(stringr)
+library(tm)
+library(quanteda)
 library(readme) # From https://github.com/iqss-research/readme-software.
+library(cluster)
+library(topicmodels)
 ```
 
 ```{r load_data, message=FALSE, warning=FALSE, eval = FALSE}
@@ -68,9 +72,9 @@ df <- read_csv("data/posts_all.csv") %>%
 # Categories 1 and 2 are "taunting of foreign countries" and "argumentative praise or criticism," respectively (?).
 # Category 6 is "other." From the paper, "Irrelevant posts that are entirely personal, commercial (such as ads), jokes, or empty posts that forward information not included. This category is removed and conditioned on in all analyses in this article."
 
-#########################
-### TEXT MINING
-#########################
+################################
+### REPLICATION WITH README 2.0
+################################
 
 # Read in the Chinese word vector file.
 # From https://fasttext.cc/docs/en/crawl-vectors.html.
@@ -110,6 +114,7 @@ row.names(wv_dm) <- wv_small$`1`
 
 dfm <- undergrad(documentText = df$text, wordVecs = wv_dm)
 # write_rds(dfm, "dfm_100k.rds")
+# dfm <- read_rds("dfm_100k.rds")
 
 # Run ReadMe2 on the original human-labeled categories.
 
@@ -134,12 +139,18 @@ results_original_table$`5`[n] <- results_original$point_readme[3]
 }
 
 
+#########################
+### UNSUPERVISED SEEDING
+#########################
+
+
+
 
 #####################
 #####################
 #####################
 
-# Use a comprehensive list of Chinese stopwords 50 percent longer than what's in the tmcn package.
+# Use a comprehensive list of Chinese stopwords.
 # Downloaded from https://github.com/stopwords-iso/stopwords-zh.
 
 stop_cn <- read_delim("stopwords-zh.txt", delim = "\n", col_names = FALSE) %>% 
@@ -192,21 +203,53 @@ dtm_clean   <- dtm_clean[rowtotals1 > 0, ]
 dtm_tfidf_clean   <- dtm_clean[rowtotals2 > 0, ]
 dtm_bi_clean   <- dtm_clean[rowtotals3 > 0, ]
 
-# Test LDA.
+# Try LDA.
+# Basic explanation here: https://medium.com/@lettier/how-does-lda-work-ill-explain-using-emoji-108abf40fa7d.
 
-mod_lda <- LDA(dtm_bi_clean, 5)
+mod_lda_bi <- LDA(dtm_bi_clean, 5)
 
 # Get information about each post.
 # See page 10: https://cran.r-project.org/web/packages/topicmodels/vignettes/topicmodels.pdf
 
-post <- posterior(mod_lda)
-terms(mod_lda)
-topics <- topics(mod_lda)
+post <- posterior(mod_lda_bi)
+terms(mod_lda_bi)
+topics <- topics(mod_lda_bi) %>% 
+  as_tibble()
 
 # Show the percentage breakdown of the 5 topics.
 
-count(tops, value) %>% mutate(percent = n / nrow(tops))
+count(topics, value) %>% mutate(percent = n / nrow(topics))
 
+###################################################
+# K-MEANS CLUSTERING ON THE DOCUMENT FEATURE MATRIX
+###################################################
+
+# Use k-means clustering for k = 5 on the dfm produced by undergrad().
+
+mod_kmeans <- kmeans(dfm,
+                     centers = 5,
+                     algorithm = "Hartigan-Wong")
+
+# Get the category results of the clustering.
+
+results_kmeans <- as_tibble(mod_kmeans$cluster)
+count(results_kmeans, value) %>% mutate(percent = n / nrow(results_kmeans))
+
+# Merge the assigned categories into the dataframe...
+
+###################################################
+# HIERARCHICAL CLUSTERING ON THE DOCUMENT FEATURE MATRIX
+###################################################
+
+# Calculating distances on a dataset this large is not feasible.
+
+mod_hc <- agnes(dfm[1:5000,],
+                diss = FALSE,
+                metric = "euclidean",
+                method = "average",
+                stand = FALSE,
+                keep.data = FALSE,
+                trace.lev = 1)
 
 
 ```
