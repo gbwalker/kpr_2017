@@ -23,13 +23,9 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(extrafont)
 library(janitor)
-library(tm)
-library(tmcn)
 library(tidytext)
 library(stringr)
-library(textmineR)
-library(quanteda)
-library(topicmodels)
+library(readme) # From https://github.com/iqss-research/readme-software.
 ```
 
 ```{r load_data, message=FALSE, warning=FALSE, eval = FALSE}
@@ -47,19 +43,101 @@ df <- read_csv("data/posts_all.csv") %>%
          account = what_is_the_account_name_of_the_person_posting,
          date = post_date,
          text = textseg) %>% 
-  select(city, folder, file, organization, url, content, site, account, date, category, text)
+  
+# Add a categorical variable for labeled or unlabeled.
+  
+  mutate(labeled = case_when(
+    !is.na(category) ~ 1,
+    TRUE ~ 0
+  )) %>% 
+  
+# Make sure category is factor variable.
+  
+  mutate(category = factor(category)) %>% 
+  
+# Select only the variables of interest.
+  
+  select(city, folder, file, organization, url, content, site, account, date, category, labeled, text)
 
 # Note that 188 posts are categorized. I presume these are the coded posts that the human coders agreed upon, approximately
-# 94 percent of 200 randomly selected posts in total. [N.B., the paper says 93 percent.] It's strange that there are no examples of 1, 2, or 6 (other). How
-# does ReadMe know what these look like if there are no examples of them?
+# 94 percent of 200 randomly selected posts in total. [N.B., the paper says 93 percent.] It's strange that there are no examples of 1, 2, or 6 (other). How does ReadMe know what these look like if there are no examples of them?
 
-# Categories 1 and 2 are "taunting of foreign countries" and "argumentative praise or criticism," respectively.
-# Categories 3, 4, and 5 are "non-argumentative praise or suggestions," "factual reporting," and "cheerleading for China," respectively.
+# Since it appears that ReadMe2 does not allow for zero-length categories, I assign 
+
+# Categories 3, 5, and 4 are "non-argumentative praise or suggestions," "factual reporting," and "cheerleading for China," respectively.
+# Categories 1 and 2 are "taunting of foreign countries" and "argumentative praise or criticism," respectively (?).
 # Category 6 is "other." From the paper, "Irrelevant posts that are entirely personal, commercial (such as ads), jokes, or empty posts that forward information not included. This category is removed and conditioned on in all analyses in this article."
 
 #########################
 ### TEXT MINING
 #########################
+
+# Read in the Chinese word vector file.
+# From https://fasttext.cc/docs/en/crawl-vectors.html.
+
+setwd("C:/Users/Gabriel/Documents/R/win-library/3.5/readme")
+wv <- read_lines(file = "cc.zh.300.vec") %>% 
+  as_tibble()
+# setwd("C:/Users/Gabriel/Dropbox/HKS/Courses/Spring 2019/Gov 1006 - Models/kpr_2017")
+
+# Drop the first random row.
+
+wv <- wv[2:nrow(wv),]
+
+# Split the word vector into a 300-dimensional matrix.
+# Keep only the first 300,000 words out of 2 million for computational speed.
+
+wv_split <- separate(wv[1:150000,], value, into = as.character(seq(1:300)), sep = " ", convert = TRUE)
+wv_split2 <- separate(wv[150001:300000,], value, into = as.character(seq(1:300)), sep = " ", convert = TRUE)
+wv_split_all <- rbind(wv_split, wv_split2)
+
+# Save the file for future use.
+
+write_rds(wv_split_all, "wv_split.rds")
+
+# Read in the saved file.
+
+setwd("C:/Users/Gabriel/Documents/R/win-library/3.5/readme")
+wv_split_all <- read_rds("wv_split_all.rds")
+wv_small <- wv_split_all[1:100000,]
+
+# Turn the word vectors into a matrix that readme::undergrad() can use.
+
+wv_dm <- as.matrix(wv_small[,2:300])
+row.names(wv_dm) <- wv_small$`1`
+
+# Create a document feature matrix.
+
+dfm <- undergrad(documentText = df$text, wordVecs = wv_dm)
+# write_rds(dfm, "dfm_100k.rds")
+
+# Run ReadMe2 on the original human-labeled categories.
+
+set.seed(50)
+
+iterations <- 3
+
+results_original_table <- tibble(n = 1:iterations, `3` = NA, `4` = NA, `5` = NA)
+
+for (n in 1:iterations) {
+
+results_original <- readme(dfm = dfm,
+                           labeledIndicator = df$labeled,
+                           categoryVec = df$category,
+                           verbose = TRUE)
+
+# Save the results to create something of a confidence interval.
+
+results_original_table$`3`[n] <- results_original$point_readme[1]
+results_original_table$`4`[n] <- results_original$point_readme[2]
+results_original_table$`5`[n] <- results_original$point_readme[3]
+}
+
+
+
+#####################
+#####################
+#####################
 
 # Use a comprehensive list of Chinese stopwords 50 percent longer than what's in the tmcn package.
 # Downloaded from https://github.com/stopwords-iso/stopwords-zh.
@@ -128,6 +206,8 @@ topics <- topics(mod_lda)
 # Show the percentage breakdown of the 5 topics.
 
 count(tops, value) %>% mutate(percent = n / nrow(tops))
+
+
 
 ```
 
