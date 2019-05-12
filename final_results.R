@@ -289,7 +289,7 @@ df_blank <- df_lda %>%
 
 # Take a few samples of the ReadMe results.
 
-iterations <- 5
+iterations <- 40
 
 results_seeded_table <- tibble(n = 1:iterations, `1` = NA, `2` = NA, `3` = NA, `4` = NA, `5` = NA)
 
@@ -334,10 +334,10 @@ results_seeded_table$`5`[n] <- results_seeded$point_readme[5]
 ######################
 
 saveRDS(lda_percents, "results/lda_percents.rds")
-saveRDS(top_terms, "results/top_terms")
-saveRDS(results_original_table, "results/results_original_table")
-saveRDS(results_exclusive_table, "results/results_exclusive_table")
-saveRDS(results_seeded_table, "results/results_seeded_table")
+saveRDS(top_terms, "results/top_terms.rds")
+saveRDS(results_original_table, "results/results_original_table.rds")
+saveRDS(results_exclusive_table, "results/results_exclusive_table.rds")
+saveRDS(results_seeded_table, "results/results_seeded_table.rds")
 
 ### Plot the original results.
 
@@ -465,6 +465,7 @@ ggplot(seed_plot, aes(proportion, group = group, fill = group, col = group)) +
     panel.background = element_blank(),
     legend.key = element_blank()) +
   labs(y = "Density",
+       x = "Proportion",
        title = "ReadMe2 provides approximate estimates of LDA group proportions.") +
   guides(fill = guide_legend(title = "Group"),
          col = "none")
