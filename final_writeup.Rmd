@@ -1,11 +1,10 @@
 ---
-# title: "Unsupervised Text Classification With Chinese Social Media: An Extension of King, Pan, and Roberts (2017)"
 output:
  pdf_document:
   md_extension: +raw_tex
   latex_engine: xelatex
 header-includes:
-  
+ 
 # Set 12-point font.
 
 - \usepackage[fontsize = 12pt]{scrextend}
@@ -21,6 +20,8 @@ header-includes:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
+library(extrafont)
+library(lubridate)
 ```
 
 \begin{centering}
@@ -32,25 +33,217 @@ An Extension of King, Pan, and Roberts (2017)
 }
 \end{centering}
 
+\begin{flushright}
+Gabe Walker
+
+May 12, 2019
+
+Gov 1006: Models
+\end{flushright}
+
+
 ## Abstract
 <150 words
 
 ## I. Introduction
-* Background on the 50c party. State of knowledge before KPR (2017) and since.
-* Other quantitative approaches to studying the 50c party and Chinese internet “opinion guidance.”
-* Summarize King, Pan, and Roberts (2017), specifically data source and results.
-* Try to improve figures if I can replicate the original ReadMe results.
-* Describe impact/significance of the paper.
+
+The “50 Cent Party” (五毛党) is the commonly used collective term for “internet commentators” (网络评论员), individuals who post pro-government content across the Chinese web.[^note1] Their activities form an important part of the Chinese government’s “public opinion guidance,” a holistic approach to information control that spans all forms of print, television, and digital media. In the era of WeChat and Weibo, with around 1.5 billion members between the two, public opinion guidance is likely more important than ever. Over the past decade, journalists, scholars, and the public have closely followed the activities of the 50 Cent Party as a way to understand the Chinese government’s approach to managing the country’s domestic internet. But because of the opaque and diffuse nature of the Party’s operations, it has been a perennial challenge to describe the specific approaches that these commentators use.
+
+[^note1]: The name “50 Cent” comes from the widely held belief that commentators get paid 0.50 RMB per post. 
+
+King, Pan, and Roberts (2017) conducted the first large-scale empirical analysis of the 50 Cent Party’s operations. Using nearly 44,000 leaked Weibo posts from the Zhanggong Internet Propaganda Office in Jiangxi Province, they characterize the timing and content of 50 Cent Party activity on the site. They then extrapolate their findings to China as a whole. Overall, they conclude that “prevailing views” about the 50 Cent Party are “largely incorrect.” Previously, most journalists and academics believed that Party members posted nationalistic and pro-government content and argumentatively tackled controversial debates head-on. King, Pan, and Roberts find, however, that these commentators often post positive, “cheerleading” content that avoids touchy subjects or outright criticism. They also find that 50 Cent commentators coordinate the timing and content of their activities, and may publish around 450 million posts a year across China.
+
+This paper aims to replicate King, Pan, and Roberts’s results and attempt to employ their approach in a new way. Specifically, I use readme2, an improved software for proportion estimation by Jerzak, King, and Strezhnev (2019), to reproduce their results, and a fully automated clustering approach in concert with readme2 to “automate” proportion estimation. I find that my results align closely with those reported in the original paper and that there may be interesting potential to use readme2...
+
 
 ## II. Replication
-* Show the results of the graph.
-* Explain what I did to replicate findings.
+
+In order to replicate some of the results in King, Pan, and Roberts (2017), I obtained the paper’s original datasets of collected posts from the Harvard Dataverse.  The first set of interest is the 43,757 known 50 Cent Party posts mentioned in the leaked files from the Zhanggong Internet Propaganda Office. These posts date from 2013 and 2014 and appear on a wide variety of different Chinese websites, including social media, discussion forums, and government-run sites. More than half of those on commercial sites appeared on Weibo. The second set of interest is scraped Weibo posts from “exclusive” sources named in the Zhanggong leak: that is, a collection of 5,584 posts from accounts that almost never post anything *besides* 50 Cent Party content. I chose these two accounts to attempt to replicate a portion of the original findings. The one difference in my approach is that I use readme2, and updated version of the readme software the authors used in their 2017 publication.
+
+First, I show that the timing of the known posts matches up exactly with what the authors reported. See the appendix for the replicated original figure (Figure 2) from the paper.
+
+```{r timeline, echo=FALSE, message=FALSE, error=FALSE, fig.align='center'}
+
+# Read in the known 50c data.
+
+df <- read_rds("results/df.rds")
+
+# Make a tibble of dates.
+
+labels <- tibble(
+  event = c(
+    "Qingming Festival \n (April)",
+    "China \n Dream \n (May)",
+    "Shanshan \n Riots \n (July)",
+    "Third \n Plenum \n (November)",
+    "Two \n meetings \n (February)",
+    "Urumqi rail explosion \n (May)",
+    "Martyr's Day \n (October)"
+  ),
+  date = c(
+    date("2013-07-01"),
+    date("2013-05-20"),
+    date("2013-08-10"),
+    date("2013-11-01"),
+    date("2014-02-05"),
+    date("2014-05-01"),
+    date("2014-08-05")
+  ),
+  y = c(
+    3000,
+    1600,
+    1000,
+    600,
+    1000,
+    2200,
+    3000
+  )
+)
+
+ggplot(df, aes(x = date)) +
+  geom_density(stat = "count") +
+  theme(
+    text = element_text(size = 14, family = "LM Roman 10"),
+    panel.background = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.key = element_blank()
+  ) +
+  labs(
+    y = "Count of posts",
+    x = "Date (January 2013–December 2014)",
+    title = "Time series of 43,757 known 50 Cent Party posts."
+  ) +
+  geom_text(
+    data = labels, aes(label = event, color = "red4", fontface = 2),
+    y = labels$y,
+    x = labels$date,
+    family = "LM Roman 10",
+    show.legend = FALSE
+  )
+```
+
+Next, I used readme2 to 
+
+
+```{r proportions, echo=FALSE, message=FALSE, error=FALSE, fig.align='center', fig.dim=c(9,7)}
+
+# The replicated main results using readme2.
+
+# First read in the initial data.
+
+results_original_table <- read_rds("results/results_original_table.rds")
+results_exclusive_table <- read_rds("results/results_exclusive_table.rds")
+
+# The content proportion graph.
+
+means <- c(0,
+           0,
+           mean(results_original_table$`3`),
+           mean(results_original_table$`5`),
+           mean(results_original_table$`4`),
+           0,
+           mean(results_exclusive_table$`Argumentative praise or criticism`),
+           mean(results_exclusive_table$`Non-argumentative Praise or Suggestions`),
+           mean(results_exclusive_table$`Factual Reporting`),
+           mean(results_exclusive_table$`Cheerleading for China`),
+           0,
+           0,
+           .16,
+           .08,
+           .8,
+           0,
+           .06,
+           .31,
+           .19,
+           .45)
+
+# Upper and lower confidence intervals.
+# Original ones from the paper are eyeballed estimates.
+
+lower <- c(0,
+           0,
+           mean(results_original_table$`3`) - 1.96/sqrt(3)*sd(results_original_table$`3`),
+           mean(results_original_table$`5`) - 1.96/sqrt(3)*sd(results_original_table$`5`),
+           mean(results_original_table$`4`) - 1.96/sqrt(3)*sd(results_original_table$`4`),
+           0,
+           mean(results_exclusive_table$`Argumentative praise or criticism`) - 1.96/sqrt(3)*sd(results_exclusive_table$`Argumentative praise or criticism`),
+           mean(results_exclusive_table$`Non-argumentative Praise or Suggestions`) - 1.96/sqrt(3)*sd(results_exclusive_table$`Non-argumentative Praise or Suggestions`),
+           mean(results_exclusive_table$`Factual Reporting`) - 1.96/sqrt(3)*sd(results_exclusive_table$`Factual Reporting`),
+           mean(results_exclusive_table$`Cheerleading for China`) - 1.96/sqrt(3)*sd(results_exclusive_table$`Cheerleading for China`),
+           0,
+           0,
+           .08,
+           .02,
+           .7,
+           0,
+           0,
+           .22,
+           .13,
+           .4)
+
+upper <- c(0.0025,
+           0.0025,
+           mean(results_original_table$`3`) + 1.96/sqrt(3)*sd(results_original_table$`3`),
+           mean(results_original_table$`5`) + 1.96/sqrt(3)*sd(results_original_table$`5`),
+           mean(results_original_table$`4`) + 1.96/sqrt(3)*sd(results_original_table$`4`),
+           0.0025,
+           mean(results_exclusive_table$`Argumentative praise or criticism`) + 1.96/sqrt(3)*sd(results_exclusive_table$`Argumentative praise or criticism`),
+           mean(results_exclusive_table$`Non-argumentative Praise or Suggestions`) + 1.96/sqrt(3)*sd(results_exclusive_table$`Non-argumentative Praise or Suggestions`),
+           mean(results_exclusive_table$`Factual Reporting`) + 1.96/sqrt(3)*sd(results_exclusive_table$`Factual Reporting`),
+           mean(results_exclusive_table$`Cheerleading for China`) + 1.96/sqrt(3)*sd(results_exclusive_table$`Cheerleading for China`),
+           .0025,
+           .0025,
+           .21,
+           .15,
+           .88,
+           .0025,
+           .1,
+           .4,
+           .25,
+           .5)
+
+groups <- c(rep("Leaked", 5), rep("Exclusive", 5), rep("Leaked (original)", 5), rep("Exclusive (original)", 5))
+
+tibble(
+  category = rep(c("Taunting of foreign countries", "Argumentative praise or criticism", "Nonargumentative praise or suggestions", "Factual reporting", "Cheerleading"), 4),
+  mean = means,
+  lower = lower,
+  upper = upper,
+  group = groups,
+  x = c(.9, 1.9, 2.9, 3.9, 4.9, 1, 2, 3, 4, 5, 1.1, 2.1, 3.1, 4.1, 5.1, 1.2, 2.2, 3.2, 4.2, 5.2)
+) %>% 
+
+# Create the graph.
+
+  ggplot(aes(x, mean, col = group)) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = .3) +
+  geom_point(aes(col = group), size = 4) +
+  geom_segment(aes(x = x, y = lower, xend = x, yend = upper), size = 1, alpha = .5) +
+  scale_color_discrete(name = "Post source") +
+  scale_x_discrete(limits = c(1, 2, 3, 4, 5),
+                   labels = c("1" = "Taunting of \n foreign countries",
+                              "2" = "Argumentative praise \n or criticism",
+                              "3" = "Nonargumentative praise \n or suggestions",
+                              "4" = "Factual reporting",
+                              "5" = "Cheerleading")) +
+  theme(
+    text = element_text(size = 16, family = "LM Roman 10"),
+    panel.background = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.ticks.x = element_blank(),
+    legend.key = element_blank(),
+    legend.position = c(.25, .65)) +
+  labs(y = "Estimated proportion of total posts",
+    title = "The readme2 results match well with those from the original paper.")
+```
+
 
 ## III. Extension
 
 * Motivation/rationale for why the reassessment is warranted: 
-  * Categories are informed by existing knowledge but still somewhat arbitrary.
-  * Try a few different unsupervised approaches as *inputs* into ReadMe and see if the results differ.
+ * Categories are informed by existing knowledge but still somewhat arbitrary.
+ * Try a few different unsupervised approaches as *inputs* into ReadMe and see if the results differ.
 * Define research question: Can ReadMe be fully automated? What categories do different fully unsupervised methods produce, and do they resembled the human-coded ones?
 * How unsupervised text classification works (general approach) vis-à-vis ReadMe.
 * Why I picked certain methodologies (out of the 150 options presented in King and Grimmer (2011)).
@@ -63,7 +256,155 @@ An Extension of King, Pan, and Roberts (2017)
 
 ## Acknowledgements
 
-## References
+\pagebreak
+
+## Appendix: Replicated Figures
+
+### Figure 2: Time Series of 43,757 Known 50c Social Media Posts with Qualitative Summaries of the Content of Volume Bursts
+
+```{r timeline_original, echo=FALSE, message=FALSE, error=FALSE, fig.align='center', fig.dim=c(10,7)}
+
+# Reproduce the original timeline from the paper, figure 2.
+
+posts <- read_csv("data/posts_all.csv")
+
+# Make a table of all the post dates.
+
+postcount <- table(posts$PostDate)
+
+# Make the sequence of dates from the posts.
+
+dateseq <- seq(min(posts$PostDate), max(posts$PostDate), by="day")
+dateseq <- dateseq[!dateseq%in%as.Date(names(postcount))]
+zeros <- rep(0, length(dateseq))
+names(zeros) <- dateseq
+postcount <- c(postcount, zeros)
+postcount <- postcount[order(as.Date(names(postcount)))]
+
+# Make a list of months for the x-axis labels.
+
+months <- seq(as.Date("2013-01-01"), as.Date("2014-12-01"), by="month")
+monthslab <- months(months, abbreviate=T)
+
+# Plot the time plot.
+
+plot(as.Date(names(postcount)),as.vector(postcount), type="l", ylab="Count of Posts",xlab="Date (Jan 2013 - Dec 2014)",xaxt="n",ylim=c(0,4000))
+
+axis(1,at=months,labels=monthslab)
+
+# Add labels for suggested post triggers.
+
+text(as.Date("2013-04-07"),3600,"1. Qingming\nfestival\n(April)", col="red")
+text(as.Date("2013-05-23"),1400,"2. China\nDream\n(May)", col="red")
+text(as.Date("2013-07-01"),2000,"3. Shanshan\nriots (July)", col="red")
+arrows(as.Date("2013-07-01"), 1800, as.Date("2013-07-01"), 1050, col="red", length=0.1)
+text(as.Date("2013-11-09"), 600, "4. 3rd plenum\nCCP 18th\nCongress (Nov)", col="red")
+text(as.Date("2014-02-12"), 1150, "5. Two meetings\n(Feb)", col="red")
+arrows(as.Date("2014-02-12"), 950, as.Date("2014-02-12"), 600, col="red", length=0.1)
+text(as.Date("2014-05-09"),2200,"6. Urumqi rail\nexplosion (May)", col="red")
+text(as.Date("2014-07-15"),1300,"7. Gov't\nforum,\npraise\ncentral\nsubsidy\n(Jul-Aug)", col="red")
+
+segments(as.Date("2014-07-15"),750,as.Date("2014-07-15"),650, col="red")
+segments(as.Date("2014-06-15"),650,as.Date("2014-08-30"), col="red")
+segments(as.Date("2014-06-15"),650,as.Date("2014-06-15"),600, col="red")
+segments(as.Date("2014-08-30"),650,as.Date("2014-08-30"),600, col="red")
+text(as.Date("2014-10-08"),3000,"8. Martyr's\nDay\n(Oct)", col="red", pos=2)
+```
+
+### Figure 3. Content of Leaked and Inferred 50c Posts, by Substantive Category
+
+```{r fig3data, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE, cache=TRUE, results=FALSE}
+
+# Figure 3.
+# Results of the ReadMe analysis.
+
+# Read in all the CSVs for the figure.
+# Note that the replication code changes the working directory and this does not.
+
+results1 <- read.csv("data/figure_3/Analysis1/ReadMeBootResults.csv")
+results2 <- read.csv("data/figure_3/Analysis2/ReadMeBootResults.csv")
+selectresults <- read.csv("data/figure_3/Analysis2/ReadMeBootResults_Exclusive.csv")
+notselectresults <- read.csv("data/figure_3/Analysis2/ReadMeBootResults_Ordinary.csv")
+results3 <- read.csv("data/figure_3/Analysis3/ReadMeBootResults.csv")
+results4 <- read.csv("data/figure_3/Analysis4/ReadMeBootResults.csv")
+
+# Normalize to remove Other category (Category 2).
+# Note that none of the variables have names (!).
+
+results1 <- results1/(1-results1[,2])
+results2 <- results2/(1-results2[,2])
+results3 <- results3/(1-results3[,2])
+results4 <- results4/(1-results4[,2])
+selectresults <- selectresults/(1-selectresults[,2])
+notselectresults <- notselectresults/(1-notselectresults[,2])
+
+# Make point estimates for each category.
+
+# Analysis 1
+apply(results1[,c(1,3:6)],2,mean)
+# Analysis 2
+apply(results2[,c(1,3:6)],2,mean)
+# Ordinary
+apply(notselectresults[,c(1,3:6)],2,mean)
+# Exclusive
+apply(selectresults[,c(1,3:6)],2,mean)
+# Analysis 3
+apply(results3[,c(1,3:6)],2,mean)
+# Analysis 4
+apply(results4[,c(1,3:6)],2,mean)
+
+```
+
+```{r fig3plot, echo=FALSE, warning=FALSE, error=FALSE, message=FALSE, fig.dim=c(10,7)}
+
+# Plot the results.
+
+plot(c(1,3,5,4,2), apply(results1[,c(1,3:6)], 2, mean), xaxt = "n", ylim = c(0,1), xlab="",
+     ylab="Proportion", pch=16, xlim=c(0.5,6.1))
+
+segments(c(1,3,5,4,2), apply(results1[,c(1,3:6)],2, function (x)
+    quantile(x,.975)), c(1,3,5,4,2),apply(results1[,c(1,3:6)],2, function (x)
+      quantile(x,.025)))
+
+points(c(1,3,5,4,2)+.1, apply(results2[,c(1,3:6)],2,mean), pch=17)
+segments(c(1,3,5,4,2) +.1, apply(results2[,c(1,3:6)],2, function (x)
+  quantile(x,.975)), c(1,3,5,4,2)+.1,apply(results2[,c(1,3:6)],2, function (x)
+    quantile(x,.025)), lty=2)
+
+points(c(1,3,5,4,2)+.2, apply(selectresults[,c(1,3:6)],2,mean), pch=7, col="red")
+segments(c(1,3,5,4,2) +.2, apply(selectresults[,c(1,3:6)],2, function (x)
+  quantile(x,.975)), c(1,3,5,4,2)+.2,apply(selectresults[,c(1,3:6)],2, function (x)
+    quantile(x,.025)), lty=2, col="red")
+
+points(c(1,3,5,4,2)+.3, apply(notselectresults[,c(1,3:6)],2,mean), pch=8, col="red")
+segments(c(1,3,5,4,2) +.3, apply(notselectresults[,c(1,3:6)],2, function (x)
+  quantile(x,.975)), c(1,3,5,4,2)+.3,apply(notselectresults[,c(1,3:6)],2, function (x)
+    quantile(x,.025)), lty=2, col="red")
+
+points(c(1,3,5,4,2)+.4, apply(results3[,c(1,3:6)],2,mean), pch=4)
+segments(c(1,3,5,4,2) +.4, apply(results3[,c(1,3:6)],2, function (x)
+  quantile(x,.975)), c(1,3,5,4,2)+.4,apply(results3[,c(1,3:6)],2, function (x)
+    quantile(x,.025)), lty=3)
+
+points(c(1,3,5,4,2)+.5, apply(results4[,c(1,3:6)],2,mean), pch=5)
+segments(c(1,3,5,4,2) +.5, apply(results4[,c(1,3:6)],2, function (x)
+  quantile(x,.975)), c(1,3,5,4,2)+.5,apply(results4[,c(1,3:6)],2, function (x)
+    quantile(x,.025)), lty=5)
+
+# Write the legend.
+
+legend(.4,1, c("Leaked e-mails, all sites", "Leaked accounts, Weibo",
+                "Leaked accounts, exclusive",
+                "Leaked accounts, ordinary", "Within county prediction, all posts",  "Out of county prediction"),
+       lty=c(1,2,2,2,3,4), pch=c(16,17,7,8,4,5), col=c(rep("black",2),
+                                                       rep("red",2), rep("black",2)))
+
+text(1.8, .17, "Argumentative Praise \n or Criticism")
+text(.9, 0.08, "Taunting of Foreign \n Countries")
+text(5.5, .8, "Cheerleading")
+text(4.8, .17, "Factual \n Reporting")
+text(3.2, 0, "Non-argumentative \n Praise or Suggestions")
+```
 
 \pagebreak
 
@@ -92,3 +433,7 @@ I did not attempt to "stem" the words further because Chinese words do not requi
 I use the "bag-of-words" approach where word order within each post does not matter for the selections reduced with term frequency and tf-idf. I also use a "bigram" (a $n = 2$ $n$-gram) that counts frequencies of adjacent pairs of words.
 
 Next steps: Try out ReadMe (or ReadMe2) and other unsupervised methods from King and Grimmer (2011).
+
+\pagebreak
+
+## References
