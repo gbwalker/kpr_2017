@@ -339,7 +339,7 @@ saveRDS(results_original_table, "results/results_original_table")
 saveRDS(results_exclusive_table, "results/results_exclusive_table")
 saveRDS(results_seeded_table, "results/results_seeded_table")
 
-# Make the original results plottable.
+### Plot the original results.
 
 means <- c(0,
            0,
@@ -361,6 +361,9 @@ means <- c(0,
            .31,
            .19,
            .45)
+
+# Upper and lower confidence intervals.
+# Original ones from the paper are eyeballed estimates.
 
 lower <- c(0,
            0,
@@ -415,7 +418,7 @@ tibble(
   x = c(.9, 1.9, 2.9, 3.9, 4.9, 1, 2, 3, 4, 5, 1.1, 2.1, 3.1, 4.1, 5.1, 1.2, 2.2, 3.2, 4.2, 5.2)
 ) %>% 
 
-# Graph the original results.
+# Create the graph.
 
   ggplot(aes(x, mean, col = group)) +
   geom_hline(yintercept = 0, linetype = "dashed", alpha = .3) +
@@ -437,3 +440,31 @@ tibble(
     legend.key = element_blank()) +
   labs(y = "Estimated proportion of total posts",
     title = "The ReadMe2 results match well with those from the original paper.")
+
+
+### Plot the new results.
+
+lda_results <- tibble(proportion = lda_percents$percent, group = lda_percents$value)
+
+seed_plot <- results_seeded_table %>% 
+  gather(key = "group", value = "proportion", `1`:`5`) %>% 
+  rename(iteration = n)
+
+# Density plot.
+
+ggplot(seed_plot, aes(proportion, group = group, fill = group, col = group)) +
+  geom_density(alpha = .3) +
+  geom_vline(xintercept = lda_results$proportion,
+             col = c("#F8766D", "#A3A500", "#00BF7D", "#00B0F6", "#E76BF3"),
+             linetype = "dashed",
+             alpha = .75,
+             size = 1,
+             show.legend = FALSE) +
+  theme(
+    text = element_text(size = 16, family = "LM Roman 10"),
+    panel.background = element_blank(),
+    legend.key = element_blank()) +
+  labs(y = "Density",
+       title = "ReadMe2 provides approximate estimates of LDA group proportions.") +
+  guides(fill = guide_legend(title = "Group"),
+         col = "none")
