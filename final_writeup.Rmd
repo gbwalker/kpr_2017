@@ -3,6 +3,7 @@ output:
  pdf_document:
   md_extension: +raw_tex
   latex_engine: xelatex
+bibliography: citations.bib
 header-includes:
  
 # Set 12-point font.
@@ -15,6 +16,15 @@ header-includes:
 # Display Chinese characters.
 
 - \usepackage{xeCJK}
+
+# Set the paragraph indent and spacing.
+- \usepackage{sectsty}
+- \setlength{\parindent}{2em}
+- \setlength{\parskip}{1em}
+
+# For displaying the table.
+- \usepackage{booktabs}
+- \usepackage{graphicx}
 ---
 
 ```{r setup, include=FALSE}
@@ -22,6 +32,7 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(extrafont)
 library(lubridate)
+library(xtable)
 ```
 
 \begin{centering}
@@ -36,31 +47,46 @@ An Extension of King, Pan, and Roberts (2017)
 \begin{flushright}
 Gabe Walker
 
+\vspace{-.5em}
+
 May 12, 2019
+
+\vspace{-.5em}
 
 Gov 1006: Models
 \end{flushright}
 
 
 ## Abstract
-<150 words
+
+\indent
+
+This paper replicates and extends “How the Chinese Government Fabricates Social Media Posts for Strategic Distraction, Not Engaged Argument” by @kpr. It uses an updated version of the readme software (“readme2”) by @jerzak in conjunction with latent Dirichlet allocation (LDA), a method for unsupervised text classification, to test readme2’s performance on an automatically classified set of Chinese social media posts. Using the replication data provided on the Harvard Dataverse[^dataverse] and the original five-topic classification scheme, it finds strong support for the authors’ original conclusions. It also proposes a new approach for automatically estimating classifications in large corpora when total classification is infeasible with certain machine learning methods.
+
+[^dataverse]: @dataverse
 
 ## I. Introduction
 
-The “50 Cent Party” (五毛党) is the commonly used collective term for “internet commentators” (网络评论员), individuals who post pro-government content across the Chinese web.[^note1] Their activities form an important part of the Chinese government’s “public opinion guidance,” a holistic approach to information control that spans all forms of print, television, and digital media. In the era of WeChat and Weibo, with around 1.5 billion members between the two, public opinion guidance is likely more important than ever. Over the past decade, journalists, scholars, and the public have closely followed the activities of the 50 Cent Party as a way to understand the Chinese government’s approach to managing the country’s domestic internet. But because of the opaque and diffuse nature of the Party’s operations, it has been a perennial challenge to describe the specific approaches that these commentators use.
+\indent
+
+The “50 Cent Party” (五毛党) is the commonly used collective term for “internet commentators” (网络评论员), individuals who post pro-government content across the Chinese web.[^note1] Their activities form an important part of the Chinese government’s “public opinion guidance” system, a holistic approach to information control that spans all forms of print, television, and digital media. In the era of WeChat and Weibo, with around 1.5 billion members between the two, public opinion guidance is more important than ever. Over the past decade, journalists, scholars, and the public have closely followed the activities of the 50 Cent Party as a way to understand the Chinese government’s approach to managing the country’s domestic internet. But because of the opaque and diffuse nature of the Party’s operations, it has been a perennial challenge to describe the specific methods that these commentators use.
 
 [^note1]: The name “50 Cent” comes from the widely held belief that commentators get paid 0.50 RMB per post. 
 
-King, Pan, and Roberts (2017) conducted the first large-scale empirical analysis of the 50 Cent Party’s operations. Using nearly 44,000 leaked Weibo posts from the Zhanggong Internet Propaganda Office in Jiangxi Province, they characterize the timing and content of 50 Cent Party activity on the site. They then extrapolate their findings to China as a whole. Overall, they conclude that “prevailing views” about the 50 Cent Party are “largely incorrect.” Previously, most journalists and academics believed that Party members posted nationalistic and pro-government content and argumentatively tackled controversial debates head-on. King, Pan, and Roberts find, however, that these commentators often post positive, “cheerleading” content that avoids touchy subjects or outright criticism. They also find that 50 Cent commentators coordinate the timing and content of their activities, and may publish around 450 million posts a year across China.
+In "How the Chinese Government Fabricates Social Media Posts for Strategic Distraction, Not Engaged Argument," @kpr conducted the first large-scale empirical analysis of the 50 Cent Party’s operations. Using nearly 44,000 leaked web posts from the Zhanggong Internet Propaganda Office in Jiangxi Province, they characterize the timing and content of 50 Cent Party activity on the site. They then extrapolate their findings to China as a whole. Overall, they conclude that “prevailing views” about the 50 Cent Party are “largely incorrect.” Previously, the majority of journalists and academics believed that Party members posted nationalistic and pro-government content and argumentatively tackled controversial debates head-on. King, Pan, and Roberts find, however, that these commentators often post positive, “cheerleading” content that avoids touchy subjects and outright criticism. They also find that 50 Cent commentators coordinate the timing and content of their activities and probably publish around 450 million posts a year across the Chinese web.
 
-This paper aims to replicate King, Pan, and Roberts’s results and attempt to employ their approach in a new way. Specifically, I use readme2, an improved software for proportion estimation by Jerzak, King, and Strezhnev (2019), to reproduce their results, and a fully automated clustering approach in concert with readme2 to “automate” proportion estimation. I find that my results align closely with those reported in the original paper and that there may be interesting potential to use readme2...
+This paper aims to replicate King, Pan, and Roberts’s results and to employ their methods in a new way. Specifically, I use readme2, an improved software for proportion estimation by @jerzak to reproduce their results, and a fully automated clustering approach in concert with readme2 to “automate” proportion estimation. I find that my results align closely with those reported in the original paper and that there may be interesting potential to use readme2 to estimate proportions in large document corpora without human assistance.
 
 
 ## II. Replication
 
-In order to replicate some of the results in King, Pan, and Roberts (2017), I obtained the paper’s original datasets of collected posts from the Harvard Dataverse.  The first set of interest is the 43,757 known 50 Cent Party posts mentioned in the leaked files from the Zhanggong Internet Propaganda Office. These posts date from 2013 and 2014 and appear on a wide variety of different Chinese websites, including social media, discussion forums, and government-run sites. More than half of those on commercial sites appeared on Weibo. The second set of interest is scraped Weibo posts from “exclusive” sources named in the Zhanggong leak: that is, a collection of 5,584 posts from accounts that almost never post anything *besides* 50 Cent Party content. I chose these two accounts to attempt to replicate a portion of the original findings. The one difference in my approach is that I use readme2, and updated version of the readme software the authors used in their 2017 publication.
+\indent
 
-First, I show that the timing of the known posts matches up exactly with what the authors reported. See the appendix for the replicated original figure (Figure 2) from the paper.
+In order to replicate some of the results in @kpr, I obtained the paper’s original datasets of collected posts from the Harvard Dataverse. The first set of interest is the 43,757 known 50 Cent Party posts mentioned in the leaked files from the Zhanggong Internet Propaganda Office. These posts date from 2013 and 2014 and appear on a wide variety of different Chinese websites, including social media, discussion forums, and government-run sites. More than half of those on commercial sites appeared on Weibo. The second set of interest is scraped Weibo posts from “exclusive” sources named in the Zhanggong leak: that is, a collection of 5,584 posts from accounts that almost never post anything *besides* 50 Cent Party content. I chose these two accounts to attempt to replicate a portion of the original findings. The one difference in my approach is that I use readme2, and updated version of the readme software the authors used in their 2017 publication.
+
+\pagebreak
+
+First, I show that the timing of the known posts matches up exactly with what the authors reported. See the appendix for the reproduced original figure (Figure 2) from the paper.
 
 ```{r timeline, echo=FALSE, message=FALSE, error=FALSE, fig.align='center'}
 
@@ -105,13 +131,12 @@ ggplot(df, aes(x = date)) +
   theme(
     text = element_text(size = 14, family = "LM Roman 10"),
     panel.background = element_blank(),
-    axis.text.x = element_text(angle = 45, hjust = 1),
     legend.key = element_blank()
   ) +
   labs(
     y = "Count of posts",
     x = "Date (January 2013–December 2014)",
-    title = "Time series of 43,757 known 50 Cent Party posts."
+    title = "Fig. 1: Time series of 43,757 known \n 50 Cent Party posts."
   ) +
   geom_text(
     data = labels, aes(label = event, color = "red4", fontface = 2),
@@ -122,8 +147,22 @@ ggplot(df, aes(x = date)) +
   )
 ```
 
-Next, I used readme2 to 
+\vspace{-3em}
 
+\begin{center}
+\footnotesize{Figure 1: The peaks show counts of identified 50 Cent Party posts during significant events (noted in red) during 2013–2014.}
+\end{center}
+
+Next, I use readme2 to estimate the proportions of the different categories in the first set of 43,757 posts. Both readme and readme2 work as described in @hopkins by using human-determined categories to estimate the proportions of those categories in the entire corpus. For example, in this case the authors initially chose five possible categories of posts.[^note2] Then two Chinese speakers were provided with 200 randomly selected posts (of the 43,757) to sort. The 188 that they agreed upon are then fed into readme, which provides an unbiased estimate of the proportions of each category in the *entire* collection of posts. The key distinction of this approach compared to many other methods of text classification is that readme does *not* actually classify anything. readme2 operates in the same way with some new improvements as described in @jerzak. The process for estimating proportions for the exclusive posts is exactly the same.
+
+\pagebreak
+
+The mean results of three runs of readme2 on the original datasets (leaked and exclusive posts), juxtaposed with results from the original paper, show close alignment between the two.[^note3]
+
+[^note2]: Taunting of foreign countries; argumentative praise or criticism; nonargumentative praise or criticism; factual reporting; cheerleading for China.
+[^note3]: These are results I estimated from Figure 3 of the paper, reproduced in the appendix.
+
+\vspace{-2em}
 
 ```{r proportions, echo=FALSE, message=FALSE, error=FALSE, fig.align='center', fig.dim=c(9,7)}
 
@@ -235,26 +274,150 @@ tibble(
     legend.key = element_blank(),
     legend.position = c(.25, .65)) +
   labs(y = "Estimated proportion of total posts",
-    title = "The readme2 results match well with those from the original paper.")
+    title = "Fig. 2: The readme2 results match well with those \n from the original paper.")
 ```
 
+\vspace{-3em}
+
+\begin{center}
+\footnotesize{Figure 2: Each color corresponds to a run of readme2. Estimates of the proportions of each of the five categories are given on the vertical axis, with error bars around estimates from the original paper. Leaked posts number 43,757 and posts from "exclusive" 50 Cent Party accounts number 5,584.}
+\end{center}
+
+As evident in Fig. 2, nearly all of my results match well with those from the original paper. None of the human-coded posts included examples of “taunting of foreign countries,” so readme ignores that category completely. The leaked posts had no “argumentative praise or criticism” either—so in this case readme essentially provided estimates of only *three* categories and assumed the others were zero. For the other three categories, my readme2 results and the original results align within the margin of error given in Figure 3 of the paper. A greater number of repeated trials of readme2 would have provided a confidence interval around the mean estimates (i.e., the points on the graph), but the obvious similarity would have remained.
+
+Overall, both results suggest that 50 Cent Party posts in these samples are primarily “cheerleading for China” (between 50 and 75 percent) and “nonargumentative praise or suggestions” and “factual reporting” (around 30–50 percent together). Very few, if any, are “argumentative” or “taunting of foreign countries.”
 
 ## III. Extension
 
-* Motivation/rationale for why the reassessment is warranted: 
- * Categories are informed by existing knowledge but still somewhat arbitrary.
- * Try a few different unsupervised approaches as *inputs* into ReadMe and see if the results differ.
-* Define research question: Can ReadMe be fully automated? What categories do different fully unsupervised methods produce, and do they resembled the human-coded ones?
-* How unsupervised text classification works (general approach) vis-à-vis ReadMe.
-* Why I picked certain methodologies (out of the 150 options presented in King and Grimmer (2011)).
+\indent
 
-### Results and Discussion
+A few aspects of @kpr prompted me to apply their methods in a new way. First, the paper’s choice of five categories seemed somewhat arbitrary. For example, this post is an example of one classified as “argumentative praise or criticism”:
 
-* What the findings were. [A quick test with LDA alone for 5 categories produced much closer proportions of categories very unlike what's reported in the paper. But these ML models are biased predictors because they aim for classification accuracy, not overall proportion accuracy.]
-* Implications of findings.
-* Areas for future work.
+> Lee Kai-Fu says that you can buy a villa for $600,000 USD in New York, much cheaper than in Beijing. But what he doesn’t tell you is that this so-called villa is actually a warehouse, which is more than a four-hour drive from New York City.
+
+> 李开复说纽约60万美金一套别野，比北京便宜多了，但他不胡告诉你那套所谓的别野其实是个仓库，而且离纽约市区车需要四个多小时。
+
+This post clearly aligns with the authors’ definition because it includes criticism of an individual. But it also seems to taunt the United States and may even have elements of factual reporting. What would happen if we defined starting categories that were completely different than these five? And would readme faithfully return unbiased estimates of these new categories?
+
+In the first step of my extension I implement a different approach to classifying the known 50 Cent Party posts. Rather than initially hand-coding a subset of posts I use latent Dirichlet allocation (LDA), just one of more than 150 fully automated classification techniques reported in @grimmer, to cluster posts. To do this, I selected a subset of 5,000 of the 43,757 (to save computation time) to transform into a “document term matrix,” a numeric array with the frequencies of every word contained in the corpus. After eliminating sparse terms (that appeared in fewer than 1 in every 1,000 posts) and sparse posts (that did not contain any common terms), I applied a basic LDA model without any specified hyperparameters to identify five distinct topics.[^note4]
+
+[^note4]: Only to keep some general equivalence to the original paper. Note that because the objective functions of different automated clustering approaches are totally different, this LDA outcome is just one out of many possible classification schemes that we might expect to see. And five categories is in this case an arbitrary choice without any measures of purity within each group.
+
+\pagebreak
+
+The table below contains the top eight terms of each of five categories, my names for the categories, and the proportion of each in the 5,000 posts.
+
+\begin{centering}
+\begin{tabular}{@{}p{1cm}p{2cm}p{1.75cm}p{6.5cm}p{3.5cm}@{}}
+\midrule
+Topic & Name                                            & Proportion & Translation    & Terms \\ \midrule
+1     & Local Progress   & 0.20       & Ganzhou, the masses, hope, Southern Ganzhou, government, development, two, establish           & 赣州, 群众, 希望, 赣南, 政府, 发展, 两, 建设  \\
+2     & National Development    & 0.15       & China, reform, dream, development, society, realize, economy, Party       & 中国, 改革, 梦, 发展, 社会, 实现, 经济, 党                       \\
+3     & Ancestral Memory   & 0.14       & Qingming, Qingming Festival, martyr, heroic martyr, cherish, give thanks, memorialize, civilized & 清明, 清明节, 先烈, 英烈, 缅怀, 感恩, 祭奠, 文明 \\
+4     & Red Spirit (present)  & 0.26       & revolution, the people, martyr, lucky, the homeland, life, hero, martyr  & 革命, 人民, 烈士, 幸福, 祖国, 生活, 英雄, 先烈                        \\
+5     & Red Spirit (past)   & 0.25       & martyr, revolution, spirit, soviet, cherish, revitalize, development, Southern Ganzhou         & 先烈, 革命, 精神, 苏区, 缅怀, 振兴, 发展, 赣南  \\ \midrule
+\end{tabular}
+\end{centering}
+
+```{r table, echo=FALSE, message=FALSE, error=FALSE, fig.align='center', eval=FALSE}
+
+# Make a table of the top eight words.
+
+top_terms <- read_rds("results/top_terms.rds")
+lda_percents <- read_rds("results/lda_percents.rds")
+
+terms <- tibble(topic = seq(1:5), terms = NA, translation = NA)
+
+for (n in seq(1:5)) {
+  subset <- top_terms %>% 
+    filter(topic == n)
+  
+  terms$terms[n] <- paste0(subset$term, collapse = ", ")
+  terms$translation[n] <- paste0(subset$translation, collapse = ", ")
+}
+
+# Make a printable dataframe.
+
+tibble(Topic = c(seq(1:5)),
+       Name = c("Local Progress", "National Development", "Ancestral Memory", "Red Spirit (present)", "Red Spirit (past)"),
+       Terms = terms$terms,
+       Proportion = round(lda_percents$percent, 2),
+       Translation = terms$translation) %>% 
+
+# Print the table; the Chinese characters don't work with Kable.
+  
+  # kable(format = "latex", booktabs = TRUE) %>% 
+  # kable_styling(position = "center", full_width = FALSE, font_size = 10)
+```
+
+As is clear from the top terms, distinguishing between each category is not easy. This could be in part due to the nature of LDA, which assigns posts to multiple topics and words to multiple topics; that is, there is natural cross-listing between topics and key words. In this case, a few categories share “martyr,” “revolution,” and “development.” It is also possible that five categories is a poor number for this subset of the known 50 Cent Party posts; a greater number might differentiate between topics more clearly. I also attempted the same analysis with a biterm LDA—using pairs of adjacent words—but the result was no more distinct. Regardless of the final real-world significance of these categories, the algorithm did successfully sort the posts, which lays the groundwork for the next step of my extension.
+
+\pagebreak
+
+To test readme2’s performance I ran 45 trials of readme2 “seeded” with 188 randomly selected categorized posts from the 5,000 subset. Again, this number is somewhat arbitrary, and could be increased for greater accuracy. The results show that readme2 estimates accurate proportions of the LDA classifications in the overall document.
+
+
+```{r extension, echo=FALSE, message=FALSE, error=FALSE, fig.align='center'}
+
+# Plot the extension chart.
+
+# First load the necessary data.
+
+lda_percents <- read_rds("results/lda_percents.rds")
+
+results_seeded_table <- read_rds("results/results_seeded_table.rds")
+
+# Creat the necessary dataframes.
+
+lda_results <- tibble(proportion = lda_percents$percent, group = lda_percents$value)
+
+seed_plot <- results_seeded_table %>% 
+  gather(key = "group", value = "proportion", `1`:`5`) %>% 
+  rename(iteration = n) %>% 
+  mutate(group = factor(case_when(
+    group == 1 ~ "Local \n Progress",
+    group == 2 ~ "National \n Development",
+    group == 3 ~ "Ancestral \n Memory",
+    group == 4 ~ "Red Spirit \n (present)",
+    group == 5 ~ "Red Spirit \n (past)",
+  )))
+
+# Density plot.
+
+ggplot(seed_plot, aes(proportion, group = group, fill = group, col = group)) +
+  geom_density(alpha = .3) +
+  geom_vline(xintercept = lda_results$proportion,
+             col = c("#A3A500", "#00BF7D", "#F8766D", "#E76BF3", "#00B0F6"),
+             linetype = "dashed",
+             alpha = .75,
+             size = 1,
+             show.legend = FALSE) +
+  theme(
+    text = element_text(size = 16, family = "LM Roman 10"),
+    panel.background = element_blank(),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.position = c(.90, .8)) +
+  labs(y = "Density",
+       x = "Proportion",
+       title = "Fig. 3: readme2 provides accurate estimates \n of LDA classification proportions.") +
+  guides(fill = guide_legend(title = "Class"),
+         col = "none")
+```
+
+\vspace{-3em}
+
+\begin{center}
+\footnotesize{Figure 3: The colored distributions are estimates of the proportions of each group in the 5,000-post subset from 45 readme2 runs. The dotted lines are the actual proportions as determined by LDA.}
+\end{center}
+
+Fig. 3 shows that readme2 provides excellent estimates of the actual proportions that LDA classified (shown with the dotted lines). It even captures the difference between “national development” and “ancestral memory,” which differ by only around 1 percent. However, though the means are not statistically different (with a one-sample t-test), there is some variance to the individual readme outputs, likely based on the initial “seed” proportions. For example, readme2’s maximum and minimum estimates for “Red Spirit (present)” are 31 and 17 percent, respectively, with a mean of 24.7 percent (actual is 24.9).
+
+In one respect this test of readme2 is a meaningless exercise: LDA already classified all of the subsample posts so we do not need to know the “actual” proportions. In another respect, however, it may have future usefulness. Some unsupervised classification methods, such as hierarchical clustering on a high-dimensional document feature matrix, are challenging to compute on some machines. The above results suggest that readme2 may provide a way to “extrapolate” proportions from a small set to a large set. For example, the unsupervised approach could label a small sample set, “seed” readme2 with those, and then have readme2 repeatedly estimate the proportions in the much larger dataset. This could provide a useful workaround for directly classifying each and every document in a large corpus and an interesting exploratory step for automatically surveying the landscape of an expansive collection of documents.
 
 ## Acknowledgements
+
+Many thanks to David Kane and Mark Hill for their enthusiasm and support, and to Gary King for his helpful suggestions.
 
 \pagebreak
 
@@ -408,32 +571,6 @@ text(3.2, 0, "Non-argumentative \n Praise or Suggestions")
 
 \pagebreak
 
-## Technical Appendix
-
-* Basically, explaining my code. Why I made certain decisions.
-
-The approach I took is detailed in Stanford (https://web.stanford.edu/~gentzkow/research/text-as-data.pdf, 5). In the document term matrix (DTM), I define $\mathbb{D}$ as the set of individual posts {$\mathbb{D}_i$} with row $c_i$ the numerical vector that represents the presence or weight of a particular language token $j$. I remove stop words (from a list of 750+) and punctuation.
-
-I then reduce the dimensionality of the DTM from around $i \approx 22,000$ to $i \approx 2,000$ with two methods: first by per-document word count, and second by term-frequency-inverse-document-frequency (tf-idf), which excludes both common and rare words.
-
-Term frequency is
-
-$$ tf_{i,j} = \frac{n_{i,j}}{\sum n_{i,j}}$$
-where $n_{i,j}$ is the number of occurences of token $j$ in post $i$ and $\sum_k n_{i,j}$ is the total number of occurences of the token through all of the documents.
-
-Inverse data frequency is
-
-$$ idf = \log \bigg(\frac{N}{df_i} \bigg) $$
-where $df_i$ is the number of documents containing $i$ out of all of the $N$ documents, so rare words have a high $idf$ score.
-
-Tf-idf is the product of the two terms, $tf \times idf$.
-
-I did not attempt to "stem" the words further because Chinese words do not require stemming (some possible exceptions are nouns and verbs that end in "-们" or "-了," respectively).
-
-I use the "bag-of-words" approach where word order within each post does not matter for the selections reduced with term frequency and tf-idf. I also use a "bigram" (a $n = 2$ $n$-gram) that counts frequencies of adjacent pairs of words.
-
-Next steps: Try out ReadMe (or ReadMe2) and other unsupervised methods from King and Grimmer (2011).
-
-\pagebreak
-
 ## References
+
+\indent

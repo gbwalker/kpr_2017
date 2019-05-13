@@ -2,6 +2,10 @@
 # FINAL RESULTS
 ################
 
+### Note that this script requires changing working directories multiple times
+# in order to account for files that are too large for GitHub.
+# Search "setwd" to find these instances.
+
 library(tidyverse)
 library(extrafont)
 library(janitor)
@@ -11,6 +15,7 @@ library(quanteda)
 library(readme) # From https://github.com/iqss-research/readme-software.
 library(topicmodels)
 library(tidytext)
+library(lubridate)
 
 set.seed(50)
 
@@ -243,7 +248,14 @@ top_terms <- tidy(mod_lda) %>%
   group_by(topic) %>% 
   top_n(8, beta) %>% 
   ungroup() %>% 
-  arrange(topic, -beta)
+  arrange(topic, -beta) %>% 
+  mutate(translation = c(
+    "Ganzhou", "the masses", "hope", "Southern Ganzhou", "government", "development", "two", "establish",
+    "China", "reform", "dream", "development", "society", "realize", "economy", "Party",
+    "Qingming", "Qingming Festival", "martyr", "heroic martyr", "cherish", "give thanks", "memorialize", "civilized",
+    "revolution", "the people", "martyr", "lucky", "the homeland", "life", "hero", "martyr",
+    "martyr", "revolution", "spirit", "soviet", "cherish", "revitalize", "development", "Southern Ganzhou")
+    )
 
 # Merge the LDA classifications with the original dataframe for later sampling.
 
@@ -340,6 +352,63 @@ saveRDS(results_exclusive_table, "results/results_exclusive_table.rds")
 saveRDS(results_seeded_table, "results/results_seeded_table.rds")
 
 ### Plot the original results.
+
+# The timeline graph.
+
+# Make a tibble of dates.
+
+labels <- tibble(
+  event = c(
+    "Qingming Festival \n (April)",
+    "China \n Dream \n (May)",
+    "Shanshan \n Riots \n (July)",
+    "Third \n Plenum \n (November)",
+    "Two \n meetings \n (February)",
+    "Urumqi rail explosion \n (May)",
+    "Martyr's Day \n (October)"
+  ),
+  date = c(
+    date("2013-05-20"),
+    date("2013-05-20"),
+    date("2013-07-01"),
+    date("2013-11-01"),
+    date("2014-02-05"),
+    date("2014-05-01"),
+    date("2014-09-01")
+  ),
+  y = c(
+    3000,
+    1200,
+    1200,
+    400,
+    800,
+    2200,
+    3000
+  )
+)
+
+ggplot(df, aes(x = date)) +
+  geom_density(stat = "count") +
+  theme(
+    text = element_text(size = 16, family = "LM Roman 10"),
+    panel.background = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.key = element_blank()
+  ) +
+  labs(
+    y = "Count of posts",
+    x = "Date (January 2013–December 2014)",
+    title = "Time series of 43,757 known Fifty Cent Party posts."
+  ) +
+  geom_text(
+    data = labels, aes(label = event, color = "indianred", fontface = 2),
+    y = labels$y,
+    x = labels$date,
+    family = "LM Roman 10",
+    show.legend = FALSE
+  )
+
+# The content proportion graph.
 
 means <- c(0,
            0,
@@ -439,7 +508,7 @@ tibble(
     axis.ticks.x = element_blank(),
     legend.key = element_blank()) +
   labs(y = "Estimated proportion of total posts",
-    title = "The ReadMe2 results match well with those from the original paper.")
+    title = "The readme2 results match well with those from the original paper.")
 
 
 ### Plot the new results.
@@ -466,6 +535,6 @@ ggplot(seed_plot, aes(proportion, group = group, fill = group, col = group)) +
     legend.key = element_blank()) +
   labs(y = "Density",
        x = "Proportion",
-       title = "ReadMe2 provides approximate estimates of LDA group proportions.") +
+       title = "readme2 provides approximate estimates of LDA group proportions.") +
   guides(fill = guide_legend(title = "Group"),
          col = "none")
